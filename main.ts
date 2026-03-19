@@ -49,6 +49,30 @@ export default class EmojiTitlePlugin extends Plugin {
                 }
             })
         );
+
+        // Listen for folder rename to keep folder notes in sync
+        this.registerEvent(
+            this.app.vault.on('rename', async (file, oldPath) => {
+                if (file instanceof TFolder && this.settings.autoCreateFolderNote) {
+                    const oldName = oldPath.split('/').pop();
+                    const newName = file.name;
+                    if (oldName && oldName !== newName) {
+                        const oldNotePath = `${file.path}/${oldName}.md`;
+                        const oldNote = this.app.vault.getAbstractFileByPath(oldNotePath);
+                        if (oldNote instanceof TFile) {
+                            const newNotePath = `${file.path}/${newName}.md`;
+                            const existingNew = this.app.vault.getAbstractFileByPath(newNotePath);
+                            if (!existingNew) {
+                                await this.app.vault.rename(oldNote, newNotePath);
+                            }
+                        } else {
+                            // Se a nota por algum motivo ainda não existe, cria ela com o nome certo!
+                            await this.createDefaultFolderNote(file);
+                        }
+                    }
+                }
+            })
+        );
     }
 
     async createDefaultFolderNote(folder: TFolder) {
