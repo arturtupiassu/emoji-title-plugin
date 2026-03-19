@@ -2,8 +2,5 @@ node_modules/
 .DS_Store
 .obsidian/
 main.js
-main-temp.js
-main-v2.js
-main-v3.js
 main-v4.js
 main-release.js
