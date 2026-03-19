@@ -45,6 +45,12 @@ export default class EmojiTitlePlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('create', async (file) => {
                 if (file instanceof TFolder && this.settings.autoCreateFolderNote) {
+                    // Evitar criar a nota imediatamente se o nome for um padrão ("Sem título", "Untitled", etc).
+                    // Isso previne o "glitch" do Obsidian recarregar a interface enquanto o usuário digita o nome real.
+                    // A nota será gerada com segurança no evento 'rename' abaixo, quando ele der o Enter!
+                    const isDefaultName = /^(untitled folder|sem t[íi]tulo|nova pasta|new folder)(\s\d+)?$/i.test(file.name);
+                    if (isDefaultName) return;
+
                     await this.createDefaultFolderNote(file);
                 }
             })
