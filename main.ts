@@ -85,8 +85,17 @@ export default class EmojiTitlePlugin extends Plugin {
         // Obter o caminho completo final p/ a nota (ex: Minha Pasta/Minha Pasta.md)
         const notePath = `${folder.path}/${folder.name}.md`;
         
-        // Criar o conteúdo padronizado de frontmatter
-        const content = `---\nemoji: ${this.settings.defaultFolderEmoji}\napply_to_children: true\n---\n`;
+        // Criar o conteúdo padronizado de frontmatter e a explicação
+        const content = `---
+emoji: ${this.settings.defaultFolderEmoji}
+apply_to_children: true
+---
+> [!info] Nota de Pasta (Folder Note)
+> Esta nota foi criada automaticamente pelo plugin **Emoji Title**.
+> Ela serve para guardar as configurações desta pasta (como o emoji e a herança dele para os arquivos contidos aqui).
+> Sinta-se à vontade para escrever o conteúdo/resumo desta pasta logo abaixo!
+
+`;
         
         try {
             const existingFile = this.app.vault.getAbstractFileByPath(notePath);
