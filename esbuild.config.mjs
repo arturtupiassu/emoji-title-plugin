@@ -47,8 +47,10 @@ const context = await esbuild.context({
 			build.onEnd(() => {
 				try { fs.unlinkSync(`${vaultPluginPath}/main.js`); } catch (e) {}
 				try { fs.unlinkSync(`${vaultPluginPath}/manifest.json`); } catch (e) {}
+				try { fs.unlinkSync(`${vaultPluginPath}/styles.css`); } catch (e) {}
 				fs.copyFileSync('main.js', `${vaultPluginPath}/main.js`);
 				fs.copyFileSync('manifest.json', `${vaultPluginPath}/manifest.json`);
+				try { fs.copyFileSync('styles.css', `${vaultPluginPath}/styles.css`); } catch (e) {}
 			});
 		}
 	}]

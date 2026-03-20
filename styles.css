@@ -1,0 +1,19 @@
+/* Dim the folder note to look like a "metadata" or "untracked" file */
+.emoji-title-folder-note .nav-file-title-content {
+    opacity: 0.55 !important;
+    font-style: italic !important;
+}
+
+/* 
+  Use Flexbox to force the folder note to the top of its folder visually,
+  without breaking Obsidian's internal DOM tracking.
+*/
+.nav-folder-children {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Force the folder note to be the first element visually inside the flex container */
+.emoji-title-folder-note {
+    order: -1 !important;
+}

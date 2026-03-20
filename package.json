@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "dev": "npm run build",
-    "build": "npx --cache /tmp/npm-cache esbuild main.ts --bundle --external:obsidian --external:electron --format=cjs --outfile=\"/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/main.js\" && cp manifest.json \"/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/manifest.json\""
+    "build": "npx --cache /tmp/npm-cache esbuild main.ts --bundle --external:obsidian --external:electron --format=cjs --outfile=\"/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/main.js\" && cp manifest.json \"/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/manifest.json\" && cp styles.css \"/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/styles.css\""
   },
   "author": "Antigravity",
   "license": "MIT",

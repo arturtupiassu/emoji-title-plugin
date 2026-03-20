@@ -227,6 +227,25 @@ apply_to_children: true
                 const abstractFile = this.app.vault.getAbstractFileByPath(path);
                 if (abstractFile instanceof TFile && abstractFile.extension === 'md') {
                     const cache = this.app.metadataCache.getFileCache(abstractFile);
+                    
+                    // -- Folder Note UI Enhancements --
+                    const parts = path.split('/');
+                    const isInsideFolderNote = parts.length > 1 && abstractFile.basename === parts[parts.length - 2];
+                    
+                    let isOutsideFolderNote = false;
+                    const siblingPath = parts.length > 1 ? `${parts.slice(0, -1).join('/')}/${abstractFile.basename}` : abstractFile.basename;
+                    const siblingFolder = this.app.vault.getAbstractFileByPath(siblingPath);
+                    if (siblingFolder instanceof TFolder) {
+                        isOutsideFolderNote = true;
+                    }
+
+                    if (isInsideFolderNote || isOutsideFolderNote) {
+                        navEl.parentElement?.classList.add('emoji-title-folder-note');
+                    } else {
+                        navEl.parentElement?.classList.remove('emoji-title-folder-note');
+                    }
+                    // ---------------------------------
+
                     // Support standard frontmatter like emojis or custom icons
                     let emoji = cache?.frontmatter?.emoji || cache?.frontmatter?.icon;
 
