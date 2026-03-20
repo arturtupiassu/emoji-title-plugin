@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile, TFolder, Modal, TextComponent, Notice } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile, TFolder, Modal, TextComponent, Notice, FileView } from 'obsidian';
 
 interface EmojiTitleSettings {
     autoCreateFolderNote: boolean;
@@ -28,13 +28,30 @@ const DEFAULT_SETTINGS: EmojiTitleSettings = {
 export default class EmojiTitlePlugin extends Plugin {
     settings: EmojiTitleSettings;
 
+    private styleEl: HTMLStyleElement;
+
     async onload() {
         console.log('Loading Emoji Title Plugin');
         
         await this.loadSettings();
         this.addSettingTab(new EmojiTitleSettingTab(this.app, this));
 
-        // ... [Commands and Events remain the same]
+        // Inject CSS for emojis
+        this.styleEl = document.createElement('style');
+        this.styleEl.id = 'emoji-title-plugin-styles';
+        this.styleEl.innerHTML = `
+            .emoji-title-plugin-span::before {
+                content: attr(data-emoji);
+                margin-right: 5px;
+            }
+            /* Ensure the span itself doesn't have text that can be captured */
+            .emoji-title-plugin-span {
+                user-select: none;
+            }
+        `;
+        document.head.appendChild(this.styleEl);
+
+        // Add Commands
         this.addCommand({
             id: 'emoji-title-set-emoji',
             name: 'Set/Review Emoji for current file',
@@ -128,24 +145,43 @@ export default class EmojiTitlePlugin extends Plugin {
         });
 
         // Initial update
-        this.updateAllFileExplorers();
+        this.refreshUI();
 
         this.app.workspace.onLayoutReady(() => {
-            this.updateAllFileExplorers();
+            this.refreshUI();
         });
 
         this.registerEvent(
             this.app.metadataCache.on('changed', (file: TFile) => {
-                this.updateAllFileExplorers();
+                this.refreshUI();
             })
         );
 
         this.registerEvent(
             this.app.workspace.on('layout-change', () => {
-                this.updateAllFileExplorers();
+                this.refreshUI();
             })
         );
 
+        this.registerEvent(
+            this.app.workspace.on('active-leaf-change', () => {
+                this.refreshUI();
+            })
+        );
+
+        this.registerEvent(
+            this.app.workspace.on('file-open', () => {
+                this.refreshUI();
+            })
+        );
+
+        this.registerEvent(
+            this.app.vault.on('rename', () => {
+                this.refreshUI();
+            })
+        );
+
+        // Listen for new folder creation to auto-create folder notes
         this.registerEvent(
             this.app.vault.on('create', async (file) => {
                 if (file instanceof TFolder && this.settings.autoCreateFolderNote) {
@@ -156,6 +192,7 @@ export default class EmojiTitlePlugin extends Plugin {
             })
         );
 
+        // Listen for folder rename to keep folder notes in sync
         this.registerEvent(
             this.app.vault.on('rename', async (file, oldPath) => {
                 if (file instanceof TFolder && this.settings.autoCreateFolderNote) {
@@ -177,6 +214,23 @@ export default class EmojiTitlePlugin extends Plugin {
                 }
             })
         );
+    }
+
+    private refreshTimeout: any = null;
+
+    // Unified UI refresh
+    refreshUI() {
+        // Clear any pending refresh to "debounce"
+        if (this.refreshTimeout) {
+            clearTimeout(this.refreshTimeout);
+        }
+
+        // Delay to ensure Obsidian has rendered the elements (especially during rename)
+        this.refreshTimeout = setTimeout(() => {
+            this.updateAllFileExplorers();
+            this.updateAllTabTitles();
+            this.refreshTimeout = null;
+        }, 100); // Reduced delay for better responsiveness while maintaining sync
     }
 
     async createDefaultFolderNote(folder: TFolder) {
@@ -203,6 +257,9 @@ apply_to_children: true
 
     onunload() {
         console.log('Unloading Emoji Title Plugin');
+        if (this.styleEl) {
+            this.styleEl.remove();
+        }
         const emojiElements = document.querySelectorAll('.emoji-title-plugin-span');
         emojiElements.forEach(el => el.remove());
     }
@@ -215,6 +272,52 @@ apply_to_children: true
         await this.saveData(this.settings);
     }
 
+    updateAllTabTitles() {
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            const view = leaf.view;
+            // Use (view as any).file to support more view types like Canvas
+            const file = (view as any).file;
+            if (file instanceof TFile) {
+                const emoji = this.getFileEmoji(file);
+                
+                // 1. Editor Header Title (The breadcrumb/title in the editor pane)
+                const headerTitle = view.containerEl.querySelector('.view-header-title');
+                if (headerTitle) {
+                    this.applyEmojiToNav(headerTitle as Element, emoji, '');
+                }
+
+                // 2. Tab Header Title (The actual tab in the top bar)
+                // Use multiple internal properties that Obsidian has used over time
+                const tabHeaderEl = (leaf as any).tabHeaderEl || (leaf as any).tabHeaderInnerEl;
+                if (tabHeaderEl) {
+                    const selectors = [
+                        '.tab-header-title', 
+                        '.tab-header-title-content',
+                        '.tab-header-title-text',
+                        '.workspace-tab-header-inner-title'
+                    ];
+                    let foundTitle = false;
+                    for (const selector of selectors) {
+                        const tabTitleEl = tabHeaderEl.querySelector(selector);
+                        if (tabTitleEl) {
+                            this.applyEmojiToNav(tabTitleEl as Element, emoji, '');
+                            foundTitle = true;
+                            break; // Stop at the first matching selector to avoid duplication
+                        }
+                    }
+                    // Fallback: if no specific title element was found, try the header itself if it looks like a title
+                    if (!foundTitle) {
+                        tabHeaderEl.classList.forEach((cls: string) => {
+                            if (cls.includes('title')) {
+                                this.applyEmojiToNav(tabHeaderEl as Element, emoji, '');
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
+
     updateAllFileExplorers() {
         const navFiles = document.querySelectorAll('.nav-file-title');
         
@@ -223,7 +326,6 @@ apply_to_children: true
             if (path) {
                 const abstractFile = this.app.vault.getAbstractFileByPath(path);
                 if (abstractFile instanceof TFile) {
-                    // Update Folder Note UI enhancements (only for MD)
                     if (abstractFile.extension === 'md') {
                         const parts = path.split('/');
                         const isInsideFolderNote = parts.length > 1 && abstractFile.basename === parts[parts.length - 2];
@@ -321,26 +423,19 @@ apply_to_children: true
         return emoji;
     }
 
-
-
     applyEmojiToNav(navEl: Element, emoji: string | null | undefined, contentSelector: string) {
-        const titleContent = navEl.querySelector(contentSelector);
-        if (titleContent) {
-            let emojiSpan = titleContent.querySelector('.emoji-title-plugin-span') as HTMLSpanElement | null;
-            
-            if (emoji) {
-                if (!emojiSpan) {
-                    emojiSpan = document.createElement('span');
-                    emojiSpan.className = 'emoji-title-plugin-span';
-                    emojiSpan.style.marginRight = '5px';
-                    titleContent.prepend(emojiSpan);
-                }
-                emojiSpan.textContent = emoji;
-            } else {
-                if (emojiSpan) {
-                    emojiSpan.remove();
-                }
-            }
+        // Clean up ALL existing emoji spans from the base element (navEl)
+        const existingSpans = navEl.querySelectorAll('.emoji-title-plugin-span');
+        existingSpans.forEach(span => span.remove());
+
+        const titleContent = contentSelector ? navEl.querySelector(contentSelector) : navEl;
+        if (titleContent && emoji) {
+            const emojiSpan = document.createElement('span');
+            emojiSpan.className = 'emoji-title-plugin-span';
+            // We use attr(data-emoji) in CSS to show the icon, so the span's text is empty
+            // This prevents Obsidian from capturing the emoji text during rename.
+            emojiSpan.setAttribute('data-emoji', emoji);
+            titleContent.prepend(emojiSpan);
         }
     }
 }
