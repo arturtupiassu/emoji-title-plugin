@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile, TFolder, Modal, TextComponent, Notice } from 'obsidian';
 
 interface EmojiTitleSettings {
     autoCreateFolderNote: boolean;
@@ -18,6 +18,101 @@ export default class EmojiTitlePlugin extends Plugin {
         
         await this.loadSettings();
         this.addSettingTab(new EmojiTitleSettingTab(this.app, this));
+
+        // Add Commands
+        this.addCommand({
+            id: 'emoji-title-set-emoji',
+            name: 'Set/Review Emoji for current file',
+            checkCallback: (checking: boolean) => {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (activeFile) {
+                    if (!checking) {
+                        new EmojiInputModal(this.app, async (emoji) => {
+                            if (!emoji) return; // cancel empty input
+                            await this.app.fileManager.processFrontMatter(activeFile, (frontmatter) => {
+                                frontmatter['emoji'] = emoji;
+                            });
+                            new Notice(`Emoji updated to ${emoji}`);
+                        }).open();
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        this.addCommand({
+            id: 'emoji-title-remove-emoji',
+            name: 'Remove Emoji from current file',
+            checkCallback: (checking: boolean) => {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (activeFile) {
+                    if (!checking) {
+                        this.app.fileManager.processFrontMatter(activeFile, (frontmatter) => {
+                            delete frontmatter['emoji'];
+                        });
+                        new Notice('Emoji removed.');
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        this.addCommand({
+            id: 'emoji-title-toggle-inheritance',
+            name: 'Toggle Emoji Inheritance',
+            checkCallback: (checking: boolean) => {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (activeFile) {
+                    if (!checking) {
+                        this.app.fileManager.processFrontMatter(activeFile, (frontmatter) => {
+                            if (frontmatter['apply_to_children']) {
+                                delete frontmatter['apply_to_children'];
+                                new Notice('Emoji inheritance removed.');
+                            } else {
+                                frontmatter['apply_to_children'] = true;
+                                new Notice('Emoji inheritance applied.');
+                            }
+                        });
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        this.addCommand({
+            id: 'emoji-title-generate-folder-note',
+            name: 'Generate Folder Note',
+            checkCallback: (checking: boolean) => {
+                const activeFile = this.app.workspace.getActiveFile();
+                // Check if activeFile has a parent
+                if (activeFile && activeFile.parent) {
+                    if (!checking) {
+                        const folder = activeFile.parent;
+                        // Avoid generating folder note for the vault root
+                        if (folder.path === '/') {
+                            new Notice("Cannot generate folder note for the vault root.");
+                            return;
+                        }
+
+                        const notePath = `${folder.path}/${folder.name}.md`;
+                        const existingFile = this.app.vault.getAbstractFileByPath(notePath);
+                        
+                        if (existingFile) {
+                            new Notice("Folder note already exists.");
+                        } else {
+                            this.createDefaultFolderNote(folder).then(() => {
+                                new Notice(`Folder note for ${folder.name} generated.`);
+                            });
+                        }
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
 
         // Initial update (when plugin is enabled via settings)
         this.updateAllFileExplorers();
@@ -252,5 +347,56 @@ class EmojiTitleSettingTab extends PluginSettingTab {
                     this.plugin.settings.defaultFolderEmoji = value;
                     await this.plugin.saveSettings();
                 }));
+    }
+}
+
+class EmojiInputModal extends Modal {
+    result: string;
+    onSubmit: (result: string) => void;
+
+    constructor(app: App, onSubmit: (result: string) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl('h2', { text: 'Enter Emoji' });
+        
+        const inputDiv = contentEl.createDiv();
+        const textInput = new TextComponent(inputDiv);
+        textInput.setPlaceholder('e.g. 🚀');
+        textInput.inputEl.style.width = '100%';
+        textInput.inputEl.style.marginBottom = '15px';
+        
+        textInput.onChange((value) => {
+            this.result = value;
+        });
+        
+        textInput.inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.close();
+                this.onSubmit(this.result);
+            }
+        });
+
+        // Small delay to focus the input text element when modal opens
+        setTimeout(() => {
+            textInput.inputEl.focus();
+        }, 50);
+
+        const btnDiv = contentEl.createDiv({ cls: 'modal-button-container' });
+        const submitBtn = btnDiv.createEl('button', { text: 'Save' });
+        submitBtn.className = 'mod-cta';
+        submitBtn.onclick = () => {
+            this.close();
+            this.onSubmit(this.result);
+        };
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
     }
 }
