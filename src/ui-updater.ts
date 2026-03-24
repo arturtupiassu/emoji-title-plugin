@@ -1,7 +1,7 @@
 import { App, TFile } from 'obsidian';
 import type { EmojiTitleSettings } from './settings';
 import { resolveFolderNote, isFolderNote } from './folder-notes';
-import { getFileEmoji } from './emoji-resolver';
+import { getFileEmoji, resolveInheritedEmoji } from './emoji-resolver';
 import { ObsidianLeafInternal, ObsidianViewInternal } from './types';
 
 /**
@@ -15,6 +15,9 @@ export function applyEmojiToNav(
     emoji: string | null | undefined,
     contentSelector: string
 ): void {
+    // Não mexe no DOM se estiver sendo renomeado para não quebrar o input do Obsidian
+    if (navEl.classList.contains('is-being-renamed')) return;
+
     // Remove todos os spans de emoji existentes
     navEl.querySelectorAll('.emoji-title-plugin-span').forEach(span => span.remove());
 
@@ -54,15 +57,32 @@ export function updateAllFileExplorers(app: App, settings: EmojiTitleSettings): 
         const path = navEl.getAttribute('data-path');
         if (!path || path === '/') return;
 
-        const noteToUse = resolveFolderNote(app.vault, path);
-        if (noteToUse) {
-            const cache = app.metadataCache.getFileCache(noteToUse);
-            const emoji = cache?.frontmatter?.emoji || cache?.frontmatter?.icon;
-            applyEmojiToNav(navEl, emoji, '.nav-folder-title-content');
-        } else {
-            applyEmojiToNav(navEl, null, '.nav-folder-title-content');
-        }
+        const emoji = resolveFolderEmoji(path, app, settings);
+        applyEmojiToNav(navEl, emoji, '.nav-folder-title-content');
     });
+}
+
+/**
+ * Resolve o emoji a exibir para uma pasta. Prioridade:
+ *  1. Emoji da folder note própria da pasta
+ *  2. Emoji herdado de uma pasta superior (recursivo)
+ *  3. Emoji padrão de pasta das configurações
+ */
+function resolveFolderEmoji(folderPath: string, app: App, settings: EmojiTitleSettings): string | null {
+    // 1. Folder note própria
+    const ownNote = resolveFolderNote(app.vault, folderPath);
+    if (ownNote) {
+        const cache = app.metadataCache.getFileCache(ownNote);
+        const emoji = cache?.frontmatter?.emoji || cache?.frontmatter?.icon;
+        if (emoji) return emoji;
+    }
+
+    // 2. Herança recursiva
+    const inheritedEmoji = resolveInheritedEmoji(folderPath, app);
+    if (inheritedEmoji) return inheritedEmoji;
+
+    // 3. Fallback padrão de pasta
+    return settings.defaultFolderEmoji || null;
 }
 
 /** Seletores de título de aba que o Obsidian usa (em ordem de preferência). */

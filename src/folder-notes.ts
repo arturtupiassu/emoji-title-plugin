@@ -50,8 +50,7 @@ export async function createDefaultFolderNote(
 ): Promise<void> {
     const notePath = `${folder.path}/${folder.name}.md`;
     const content = `---
-emoji: ${settings.defaultFolderEmoji}
-apply_to_children: true
+apply_to_children: false
 ---
 > [!info] Nota de Pasta (Folder Note)
 > Esta nota foi criada automaticamente pelo plugin **Emoji Title**.

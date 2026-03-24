@@ -64,30 +64,40 @@ export function getFileEmoji(
     }
 
     // 2. Herança de emoji da pasta pai
-    const inheritedEmoji = resolveInheritedEmoji(file, app);
+    const inheritedEmoji = resolveInheritedEmoji(file.path, app);
     if (inheritedEmoji) return inheritedEmoji;
 
     // 3. Fallback por extensão
+    if (file.extension === 'md') {
+        return settings.defaultMarkdownEmoji || null;
+    }
     return getEmojiByExtension(file.extension, settings);
 }
 
 /**
- * Tenta obter um emoji herdado da nota de pasta pai do arquivo.
+ * Tenta obter um emoji herdado subindo na hierarquia de pastas.
+ * Procura por uma nota de pasta que tenha `apply_to_children: true`.
  */
-function resolveInheritedEmoji(file: TFile, app: App): string | null {
-    const parts = file.path.split('/');
+export function resolveInheritedEmoji(path: string, app: App): string | null {
+    const parts = path.split('/');
     if (parts.length <= 1) return null;
 
-    const parentPath = parts.slice(0, -1).join('/');
-    const folderNote = resolveFolderNote(app.vault, parentPath);
-    if (!folderNote) return null;
+    // Começamos do pai imediato e subimos até encontrar herança ou chegar na raiz
+    for (let i = parts.length - 1; i > 0; i--) {
+        const currentParentPath = parts.slice(0, i).join('/');
+        const folderNote = resolveFolderNote(app.vault, currentParentPath);
+        if (folderNote) {
+            const cache = app.metadataCache.getFileCache(folderNote);
+            const applyToChildren =
+                cache?.frontmatter?.inherit_emoji ||
+                cache?.frontmatter?.apply_to_children;
 
-    const parentCache = app.metadataCache.getFileCache(folderNote);
-    const applyToChildren =
-        parentCache?.frontmatter?.inherit_emoji ||
-        parentCache?.frontmatter?.apply_to_children;
+            if (applyToChildren) {
+                const emoji = cache?.frontmatter?.emoji || cache?.frontmatter?.icon;
+                if (emoji) return emoji;
+            }
+        }
+    }
 
-    if (!applyToChildren) return null;
-
-    return parentCache?.frontmatter?.emoji || parentCache?.frontmatter?.icon || null;
+    return null;
 }

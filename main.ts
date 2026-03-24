@@ -9,7 +9,7 @@ export default class EmojiTitlePlugin extends Plugin {
     settings: EmojiTitleSettings;
 
     private styleEl: HTMLStyleElement;
-    private refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+    private refreshFrame: number | null = null;
 
     async onload() {
         console.log('Loading Emoji Title Plugin');
@@ -29,9 +29,9 @@ export default class EmojiTitlePlugin extends Plugin {
         console.log('Unloading Emoji Title Plugin');
 
         // Cancela refresh pendente para evitar execução após unload
-        if (this.refreshTimeout) {
-            clearTimeout(this.refreshTimeout);
-            this.refreshTimeout = null;
+        if (this.refreshFrame) {
+            cancelAnimationFrame(this.refreshFrame);
+            this.refreshFrame = null;
         }
 
         if (this.styleEl) this.styleEl.remove();
@@ -49,12 +49,12 @@ export default class EmojiTitlePlugin extends Plugin {
     // ─── UI Refresh ──────────────────────────────────────────────────────────
 
     refreshUI() {
-        if (this.refreshTimeout) clearTimeout(this.refreshTimeout);
-        this.refreshTimeout = setTimeout(() => {
+        if (this.refreshFrame) cancelAnimationFrame(this.refreshFrame);
+        this.refreshFrame = window.requestAnimationFrame(() => {
             updateAllFileExplorers(this.app, this.settings);
             updateAllTabTitles(this.app, this.settings);
-            this.refreshTimeout = null;
-        }, 100);
+            this.refreshFrame = null;
+        });
     }
 
     // ─── Setup ───────────────────────────────────────────────────────────────
@@ -186,6 +186,7 @@ export default class EmojiTitlePlugin extends Plugin {
                 if (!isDefaultName) {
                     await createDefaultFolderNote(this.app.vault, file, this.settings);
                 }
+                this.refreshUI();
             })
         );
 
@@ -195,6 +196,7 @@ export default class EmojiTitlePlugin extends Plugin {
                 if (!(file instanceof TFolder)) return;
                 if (!this.settings.autoCreateFolderNote) return;
                 await syncFolderNoteOnRename(this.app, file, oldPath, this.settings);
+                this.refreshUI();
             })
         );
     }

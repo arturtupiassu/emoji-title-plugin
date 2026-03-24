@@ -4,6 +4,7 @@ import type EmojiTitlePlugin from '../main';
 export interface EmojiTitleSettings {
     autoCreateFolderNote: boolean;
     defaultFolderEmoji: string;
+    defaultMarkdownEmoji: string;
     defaultCanvasEmoji: string;
     defaultBaseEmoji: string;
     defaultImageEmoji: string;
@@ -15,7 +16,8 @@ export interface EmojiTitleSettings {
 
 export const DEFAULT_SETTINGS: EmojiTitleSettings = {
     autoCreateFolderNote: false,
-    defaultFolderEmoji: '🗒️',
+    defaultFolderEmoji: '📁',
+    defaultMarkdownEmoji: '🗒️',
     defaultCanvasEmoji: '🎨',
     defaultBaseEmoji: '📊',
     defaultImageEmoji: '🖼️',
@@ -68,9 +70,10 @@ export class EmojiTitleSettingTab extends PluginSettingTab {
             placeholder: string;
             key: keyof EmojiTitleSettings;
         }> = [
-            { name: 'Canvas',                  placeholder: '🎨', key: 'defaultCanvasEmoji' },
-            { name: 'Base (Database)',          placeholder: '📊', key: 'defaultBaseEmoji' },
-            { name: 'Imagens (PNG, JPG, etc.)', placeholder: '🖼️', key: 'defaultImageEmoji' },
+            { name: 'Markdown (notas)',          placeholder: '🗒️', key: 'defaultMarkdownEmoji' },
+            { name: 'Canvas',                   placeholder: '🎨', key: 'defaultCanvasEmoji' },
+            { name: 'Base (Database)',           placeholder: '📊', key: 'defaultBaseEmoji' },
+            { name: 'Imagens (PNG, JPG, etc.)',  placeholder: '🖼️', key: 'defaultImageEmoji' },
             { name: 'PDF',                      placeholder: '📄', key: 'defaultPDFEmoji' },
             { name: 'Planilhas (XLSX, CSV)',     placeholder: '📈', key: 'defaultSpreadsheetEmoji' },
             { name: 'Documentos (DOCX, TXT)',    placeholder: '📝', key: 'defaultDocumentEmoji' },
