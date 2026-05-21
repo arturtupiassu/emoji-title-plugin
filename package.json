@@ -1,11 +1,11 @@
 {
   "name": "obsidian-emoji-title",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Add an emoji to a page title in the Obsidian File Explorer",
   "main": "main.js",
   "scripts": {
-    "dev": "npm run build",
-    "build": "npx --cache /tmp/npm-cache esbuild main.ts --bundle --external:obsidian --external:electron --format=cjs --outfile=\"/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/main.js\" && cp manifest.json \"/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/manifest.json\" && cp styles.css \"/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/styles.css\""
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production"
   },
   "author": "arturtupiassu",
   "license": "MIT",

@@ -1,7 +1,7 @@
 {
   "id": "emoji-title",
   "name": "Emoji Title",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minAppVersion": "0.15.0",
   "description": "Add an emoji from frontmatter to the File Explorer title. Now supports inherit_emoji for folders.",
   "author": "arturtupiassu",
