@@ -68,25 +68,40 @@ apply_to_children: false
     }
 }
 
-/**
- * Sincroniza a nota de pasta quando uma pasta é renomeada.
- * Renomeia a nota existente ou cria uma nova se não existir.
- */
 export async function syncFolderNoteOnRename(
     app: App,
     folder: TFolder,
     oldPath: string,
     settings: EmojiTitleSettings
 ): Promise<void> {
-    const oldName = oldPath.split('/').pop();
+    const oldParts = oldPath.split('/');
+    const oldName = oldParts[oldParts.length - 1];
+    const oldParentPath = oldParts.slice(0, -1).join('/');
+    
     const newName = folder.name;
     if (!oldName || oldName === newName) return;
 
-    const oldNotePath = `${folder.path}/${oldName}.md`;
-    const oldNote = app.vault.getAbstractFileByPath(oldNotePath);
+    // A nota "inside" foi movida junto com a pasta, então seu caminho agora é dentro de folder.path
+    const insideOldNotePath = `${folder.path}/${oldName}.md`;
+    // A nota "outside" não foi movida, então seu caminho continua no diretório pai antigo
+    const outsideOldNotePath = oldParentPath ? `${oldParentPath}/${oldName}.md` : `${oldName}.md`;
+
+    const insideOldNote = app.vault.getAbstractFileByPath(insideOldNotePath);
+    const outsideOldNote = app.vault.getAbstractFileByPath(outsideOldNotePath);
+
+    const oldNote = (insideOldNote instanceof TFile) ? insideOldNote : (outsideOldNote instanceof TFile) ? outsideOldNote : null;
 
     if (oldNote instanceof TFile) {
-        const newNotePath = `${folder.path}/${newName}.md`;
+        const isInside = oldNote === insideOldNote;
+        
+        let newNotePath = '';
+        if (isInside) {
+            newNotePath = `${folder.path}/${newName}.md`;
+        } else {
+            const newParentPath = folder.path.split('/').slice(0, -1).join('/');
+            newNotePath = newParentPath ? `${newParentPath}/${newName}.md` : `${newName}.md`;
+        }
+
         const existingNew = app.vault.getAbstractFileByPath(newNotePath);
         if (!existingNew) {
             await app.vault.rename(oldNote, newNotePath);
