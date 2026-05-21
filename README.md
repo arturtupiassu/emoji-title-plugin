@@ -1,84 +1,67 @@
 # Obsidian Emoji Title Plugin
-
-Este é um plugin para o [Obsidian](https://obsidian.md) que adiciona automaticamente emojis aos títulos de notas e pastas no explorador de arquivos (*File Explorer*), bem como nas abas de navegação ativas.
-
-A resolução do emoji é feita de forma inteligente com base no frontmatter da nota, na herança da pasta pai ou na extensão do arquivo.
-
+This is a plugin for Obsidian that automatically adds emojis to note and folder titles in the File Explorer, as well as in active navigation tabs.
+Emoji resolution is handled intelligently based on the note's frontmatter, parent folder inheritance, or file extension.
 ---
-
-## 🚀 Funcionalidades
-
-1. **Emojis em Títulos e Abas:** Exibe emojis correspondentes ao arquivo tanto na barra lateral quanto no topo da aba aberta.
-2. **Resolução Inteligente de Emojis:** A escolha de qual emoji exibir segue uma ordem de prioridade específica:
-   * **Frontmatter:** Verifica se a nota possui os campos `emoji` ou `icon` definidos no metadado (YAML frontmatter).
-   * **Herança de Pastas:** Pastas com notas de pasta (*Folder Notes*) configuradas com `apply_to_children: true` (ou `inherit_emoji: true`) transmitem seu emoji recursivamente para todos os arquivos e subpastas internos.
-   * **Extensões de Arquivos:** Caso nenhum emoji seja especificado, o plugin atribui um emoji padrão com base no tipo de arquivo (Markdown, Canvas, Imagem, PDF, Planilhas, etc.).
-3. **Folder Notes Automáticas:** Criação e sincronização automática de notas de pastas para gerenciar metadados de diretórios de forma limpa.
-4. **Prevenção de Glitches no Rename:** Sistema inteligente que detecta quando um arquivo ou pasta está sendo renomeado na barra lateral, suspendendo a injeção do emoji no DOM para impedir que o Obsidian capture o emoji como parte do novo nome do arquivo.
-5. **Debounce de Renderização:** Otimizado com `requestAnimationFrame` para evitar lentidão e sobrecarga no processamento visual em cofres muito grandes.
-
+## 🚀 Features
+ 1. **Emojis in Titles and Tabs:** Displays emojis corresponding to the file both in the sidebar and at the top of the open tab.
+ 2. **Smart Emoji Resolution:** The choice of which emoji to display follows a specific priority order:
+   * **Frontmatter:** Checks if the note has the emoji or icon fields defined in the metadata (YAML frontmatter).
+   * **Folder Inheritance:** Folders with Folder Notes configured with apply_to_children: true (or inherit_emoji: true) recursively transmit their emoji to all internal files and subfolders.
+   * **File Extensions:** If no emoji is specified, the plugin assigns a default emoji based on the file type (Markdown, Canvas, Image, PDF, Spreadsheets, etc.).
+ 3. **Automatic Folder Notes:** Automatic creation and synchronization of folder notes to manage directory metadata cleanly.
+ 4. **Rename Glitch Prevention:** Smart system that detects when a file or folder is being renamed in the sidebar, suspending emoji injection in the DOM to prevent Obsidian from capturing the emoji as part of the new file name.
+ 5. **Rendering Debounce:** Optimized with requestAnimationFrame to prevent slowdowns and visual processing overhead in very large vaults.
 ---
-
-## 🛠️ Estrutura do Projeto
-
-O código do plugin foi modularizado a partir do `main.ts` inicial para facilitar a manutenção e legibilidade:
+## 🛠️ Project Structure
+The plugin code has been modularized from the initial main.ts to facilitate maintenance and readability:
+```text
+├── main.ts               # Plugin entry point (command registration, events, and lifecycle)
+├── manifest.json         # Metadata and plugin identification in Obsidian
+├── styles.css            # CSS styles required for correct rendering
+├── esbuild.config.mjs    # esbuild bundler configuration
+├── package.json          # Project dependencies and build scripts
+└── src/                  # Specialized modules
+    ├── emoji-resolver.ts # Priority and inheritance logic for defining emojis
+    ├── folder-notes.ts   # Creation, synchronization, and management of folder notes
+    ├── modal.ts          # Interactive emoji selection modal
+    ├── settings.ts       # Configuration schema and user preferences tab
+    ├── types.ts          # Type definitions and extensions for the internal Obsidian API
+    └── ui-updater.ts     # DOM manipulation for emoji injection in the interface
 
 ```
-├── main.ts               # Ponto de entrada do plugin (registro de comandos, eventos e ciclo de vida)
-├── manifest.json         # Metadados e identificação do plugin no Obsidian
-├── styles.css            # Estilos CSS necessários para a renderização correta
-├── esbuild.config.mjs    # Configuração de empacotamento do esbuild
-├── package.json          # Dependências do projeto e scripts de compilação
-└── src/                  # Módulos especializados
-    ├── emoji-resolver.ts # Lógica de prioridade e herança para definição dos emojis
-    ├── folder-notes.ts   # Criação, sincronização e gerenciamento de notas de pasta
-    ├── modal.ts          # Modal interativo de seleção de emojis
-    ├── settings.ts       # Esquema de configurações e aba de preferências do usuário
-    ├── types.ts          # Definições de tipos e extensões da API interna do Obsidian
-    └── ui-updater.ts     # Manipulação do DOM para injeção de emojis na interface
-```
-
 ---
-
-## ⚙️ Configurações Disponíveis
-
-Na aba de configurações do plugin, você pode personalizar:
-* **Auto-criar Folder Notes:** Cria automaticamente uma nota de pasta correspondente sempre que uma nova pasta for criada.
-* **Emojis Padrão por Tipo:**
-  * Pastas (`📁`)
-  * Markdown (`🗒️`)
-  * Canvas (`🎨`)
-  * Bases de Dados/Dataview (`📊`)
-  * Imagens (`🖼️`)
-  * PDFs (`📄`)
-  * Planilhas (`📈`)
-  * Documentos e Outros formatos
-* **Personalização de Ícones:** Modificar rapidamente os fallbacks padrão.
-
+## ⚙️ Available Settings
+In the plugin's settings tab, you can customize:
+ * **Auto-create Folder Notes:** Automatically creates a corresponding folder note whenever a new folder is created.
+ * **Default Emojis by Type:**
+   * Folders (📁)
+   * Markdown (🗒️)
+   * Canvas (🎨)
+   * Databases/Dataview (📊)
+   * Images (🖼️)
+   * PDFs (📄)
+   * Spreadsheets (📈)
+   * Documents and Other formats
+ * **Icon Customization:** Quickly modify default fallbacks.
 ---
-
-## 💻 Desenvolvimento Local e Compilação
-
-### Requisitos
-* [Node.js](https://nodejs.org/) instalado.
-
-### Passos para Compilar
-1. Instale as dependências do projeto:
+## 💻 Local Development and Compilation
+### Requirements
+ * Node.js installed.
+### Steps to Compile
+ 1. Install project dependencies:
    ```bash
    npm install
+   
    ```
-
-2. Compile o plugin:
+ 2. Compile the plugin:
    ```bash
    npm run build
+   
    ```
-
-> [!NOTE]  
-> O script de `build` está configurado para copiar o arquivo final empacotado (`main.js`), o `manifest.json` e o `styles.css` diretamente para a pasta de desenvolvimento de plugins do seu cofre local do Obsidian:
-> `~/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin/`
-
+> [!NOTE]
+> The build script is configured to copy the final bundled file (main.js), manifest.json, and styles.css directly to the plugin development folder of your local Obsidian vault:
+> ~/obsidian/Your Vault/.obsidian/plugins/emoji-title-plugin/
+> 
 ---
-
-## 📜 Licença
-
-Este projeto é disponibilizado sob a licença MIT.
+## 📜 License
+This project is made available under the MIT license.
