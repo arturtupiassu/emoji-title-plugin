@@ -194,7 +194,6 @@ export default class EmojiTitlePlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('rename', async (file, oldPath) => {
                 if (!(file instanceof TFolder)) return;
-                if (!this.settings.autoCreateFolderNote) return;
                 await syncFolderNoteOnRename(this.app, file, oldPath, this.settings);
                 this.refreshUI();
             })

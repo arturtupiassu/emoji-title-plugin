@@ -106,7 +106,7 @@ export async function syncFolderNoteOnRename(
         if (!existingNew) {
             await app.vault.rename(oldNote, newNotePath);
         }
-    } else {
+    } else if (settings.autoCreateFolderNote) {
         await createDefaultFolderNote(app.vault, folder, settings);
     }
 }
