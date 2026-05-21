@@ -1,6 +1,6 @@
 {
   "name": "obsidian-emoji-title",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Add an emoji to a page title in the Obsidian File Explorer",
   "main": "main.js",
   "scripts": {
@@ -11,13 +11,13 @@
   "author": "arturtupiassu",
   "license": "MIT",
   "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "@types/node": "^16.11.29",
+    "@types/jest": "30.0.0",
+    "@types/node": "16.11.29",
     "esbuild": "0.17.3",
-    "jest": "^30.4.2",
-    "jest-environment-jsdom": "^30.4.1",
-    "obsidian": "latest",
-    "ts-jest": "^29.4.11",
+    "jest": "30.4.2",
+    "jest-environment-jsdom": "30.4.1",
+    "obsidian": "1.12.3",
+    "ts-jest": "29.4.11",
     "tslib": "2.4.0",
     "typescript": "4.9.5"
   }
