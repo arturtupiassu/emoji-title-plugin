@@ -25,6 +25,7 @@ describe('folder-notes', () => {
 
     beforeEach(() => {
         app = new App();
+        app.fileManager = { renameFile: jest.fn() } as any;
         settings = { ...DEFAULT_SETTINGS };
     });
 
@@ -98,7 +99,7 @@ describe('folder-notes', () => {
 
             await syncFolderNoteOnRename(app, folder, 'A/OldName', settings);
 
-            expect(app.vault.rename).toHaveBeenCalledWith(oldNote, 'A/NewName/NewName.md');
+            expect(app.fileManager.renameFile).toHaveBeenCalledWith(oldNote, 'A/NewName/NewName.md');
         });
 
         it('should rename outside folder note when folder is renamed', async () => {
@@ -109,7 +110,7 @@ describe('folder-notes', () => {
 
             await syncFolderNoteOnRename(app, folder, 'A/OldName', settings);
 
-            expect(app.vault.rename).toHaveBeenCalledWith(oldNote, 'A/NewName.md');
+            expect(app.fileManager.renameFile).toHaveBeenCalledWith(oldNote, 'A/NewName.md');
         });
 
         it('should create a new folder note if none existed and autoCreateFolderNote is true', async () => {

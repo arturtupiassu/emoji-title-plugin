@@ -83,10 +83,15 @@ export async function syncFolderNoteOnRename(
 
     // A nota "inside" foi movida junto com a pasta, então seu caminho agora é dentro de folder.path
     const insideOldNotePath = `${folder.path}/${oldName}.md`;
+    let insideOldNote = app.vault.getAbstractFileByPath(insideOldNotePath);
+    
+    // Fallback: a cache do Obsidian pode estar desatualizada no momento exato do evento
+    if (!insideOldNote) {
+        insideOldNote = folder.children.find(c => c instanceof TFile && c.name === `${oldName}.md`) || null;
+    }
+
     // A nota "outside" não foi movida, então seu caminho continua no diretório pai antigo
     const outsideOldNotePath = oldParentPath ? `${oldParentPath}/${oldName}.md` : `${oldName}.md`;
-
-    const insideOldNote = app.vault.getAbstractFileByPath(insideOldNotePath);
     const outsideOldNote = app.vault.getAbstractFileByPath(outsideOldNotePath);
 
     const oldNote = (insideOldNote instanceof TFile) ? insideOldNote : (outsideOldNote instanceof TFile) ? outsideOldNote : null;
@@ -104,7 +109,11 @@ export async function syncFolderNoteOnRename(
 
         const existingNew = app.vault.getAbstractFileByPath(newNotePath);
         if (!existingNew) {
-            await app.vault.rename(oldNote, newNotePath);
+            try {
+                await app.fileManager.renameFile(oldNote, newNotePath);
+            } catch (e) {
+                console.error("Emoji Title: Erro ao renomear folder note", e);
+            }
         }
     } else if (settings.autoCreateFolderNote) {
         await createDefaultFolderNote(app.vault, folder, settings);
