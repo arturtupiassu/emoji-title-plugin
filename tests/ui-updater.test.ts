@@ -54,5 +54,34 @@ describe('ui-updater', () => {
             const spans = navEl.querySelectorAll('.emoji-title-plugin-span');
             expect(spans.length).toBe(0);
         });
+
+        it('should truncate string if longer than 20 characters', () => {
+            applyEmojiToNav(navEl, '🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀', '.nav-file-title-content');
+
+            const span = navEl.querySelector('.emoji-title-plugin-span');
+            expect(span).not.toBeNull();
+            expect(Array.from(span?.getAttribute('data-emoji') || '')).toHaveLength(20);
+        });
+
+        it('should limit input before trimming oversized strings', () => {
+            applyEmojiToNav(navEl, `${' '.repeat(1000)}🚀`, '.nav-file-title-content');
+
+            const span = navEl.querySelector('.emoji-title-plugin-span');
+            expect(span).toBeNull();
+        });
+
+        it('should ignore non-string types like arrays or objects', () => {
+            applyEmojiToNav(navEl, ['🚀', '🔥'], '.nav-file-title-content');
+            let span = navEl.querySelector('.emoji-title-plugin-span');
+            expect(span).toBeNull();
+
+            applyEmojiToNav(navEl, { toString: () => '🚀' }, '.nav-file-title-content');
+            span = navEl.querySelector('.emoji-title-plugin-span');
+            expect(span).toBeNull();
+
+            applyEmojiToNav(navEl, 123, '.nav-file-title-content');
+            span = navEl.querySelector('.emoji-title-plugin-span');
+            expect(span).toBeNull();
+        });
     });
 });

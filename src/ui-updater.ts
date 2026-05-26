@@ -4,6 +4,18 @@ import { resolveFolderNote, isFolderNote } from './folder-notes';
 import { getFileEmoji, resolveInheritedEmoji } from './emoji-resolver';
 import { ObsidianLeafInternal, ObsidianViewInternal } from './types';
 
+const MAX_EMOJI_INPUT_LENGTH = 64;
+const MAX_EMOJI_DISPLAY_CHARACTERS = 20;
+
+function normalizeDisplayEmoji(emoji: unknown): string | null {
+    if (typeof emoji !== 'string') return null;
+
+    const trimmed = emoji.substring(0, MAX_EMOJI_INPUT_LENGTH).trim();
+    if (!trimmed) return null;
+
+    return Array.from(trimmed).slice(0, MAX_EMOJI_DISPLAY_CHARACTERS).join('');
+}
+
 /**
  * Insere (ou atualiza) o span de emoji em um elemento de navegação.
  * Remove spans antigos primeiro para evitar duplicação.
@@ -12,7 +24,7 @@ import { ObsidianLeafInternal, ObsidianViewInternal } from './types';
  */
 export function applyEmojiToNav(
     navEl: Element,
-    emoji: string | null | undefined,
+    emoji: unknown,
     contentSelector: string
 ): void {
     // Não mexe no DOM se estiver sendo renomeado para não quebrar o input do Obsidian
@@ -22,11 +34,14 @@ export function applyEmojiToNav(
     navEl.querySelectorAll('.emoji-title-plugin-span').forEach(span => span.remove());
 
     const titleContent = contentSelector ? navEl.querySelector(contentSelector) : navEl;
-    if (titleContent && emoji) {
-        const emojiSpan = document.createElement('span');
-        emojiSpan.className = 'emoji-title-plugin-span';
-        emojiSpan.setAttribute('data-emoji', emoji);
-        titleContent.prepend(emojiSpan);
+    if (titleContent) {
+        const safeEmoji = normalizeDisplayEmoji(emoji);
+        if (safeEmoji) {
+            const emojiSpan = document.createElement('span');
+            emojiSpan.className = 'emoji-title-plugin-span';
+            emojiSpan.setAttribute('data-emoji', safeEmoji);
+            titleContent.prepend(emojiSpan);
+        }
     }
 }
 
