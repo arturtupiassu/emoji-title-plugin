@@ -30,18 +30,30 @@ export function applyEmojiToNav(
     // Não mexe no DOM se estiver sendo renomeado para não quebrar o input do Obsidian
     if (navEl.classList.contains('is-being-renamed')) return;
 
-    // Remove todos os spans de emoji existentes
-    navEl.querySelectorAll('.emoji-title-plugin-span').forEach(span => span.remove());
-
     const titleContent = contentSelector ? navEl.querySelector(contentSelector) : navEl;
-    if (titleContent) {
-        const safeEmoji = normalizeDisplayEmoji(emoji);
-        if (safeEmoji) {
+    if (!titleContent) return;
+
+    const existingSpans = titleContent.querySelectorAll('.emoji-title-plugin-span');
+    const safeEmoji = normalizeDisplayEmoji(emoji);
+
+    if (safeEmoji) {
+        if (existingSpans.length > 0) {
+            const firstSpan = existingSpans[0];
+            if (firstSpan.getAttribute('data-emoji') !== safeEmoji) {
+                firstSpan.setAttribute('data-emoji', safeEmoji);
+            }
+            // Remove any additional stale/duplicate spans to maintain DOM correctness
+            for (let i = 1; i < existingSpans.length; i++) {
+                existingSpans[i].remove();
+            }
+        } else {
             const emojiSpan = document.createElement('span');
             emojiSpan.className = 'emoji-title-plugin-span';
             emojiSpan.setAttribute('data-emoji', safeEmoji);
             titleContent.prepend(emojiSpan);
         }
+    } else {
+        existingSpans.forEach(span => span.remove());
     }
 }
 

@@ -32,12 +32,10 @@ export function isFolderNote(vault: Vault, file: TFile): boolean {
     const isInsideFolderNote = parts.length > 1 && file.basename === parts[parts.length - 2];
     if (isInsideFolderNote) return true;
 
-    // Nota "fora": existe uma pasta irmã com o mesmo nome
-    if (parts.length > 1) {
-        const siblingFolderPath = `${parts.slice(0, -1).join('/')}/${file.basename}`;
-        return vault.getAbstractFileByPath(siblingFolderPath) instanceof TFolder;
-    }
-    return false;
+    // Nota "fora": existe uma pasta irmã com o mesmo nome (incluindo nível raiz)
+    const parentPath = parts.slice(0, -1).join('/');
+    const siblingFolderPath = parentPath ? `${parentPath}/${file.basename}` : file.basename;
+    return vault.getAbstractFileByPath(siblingFolderPath) instanceof TFolder;
 }
 
 /**
@@ -77,9 +75,8 @@ export async function syncFolderNoteOnRename(
     const oldParts = oldPath.split('/');
     const oldName = oldParts[oldParts.length - 1];
     const oldParentPath = oldParts.slice(0, -1).join('/');
-    
     const newName = folder.name;
-    if (!oldName || oldName === newName) return;
+    if (!oldName) return;
 
     // A nota "inside" foi movida junto com a pasta, então seu caminho agora é dentro de folder.path
     const insideOldNotePath = `${folder.path}/${oldName}.md`;
@@ -101,10 +98,14 @@ export async function syncFolderNoteOnRename(
         
         let newNotePath = '';
         if (isInside) {
+            // Nota interna só precisa ser renomeada se o nome da pasta mudou
+            if (oldName === newName) return;
             newNotePath = `${folder.path}/${newName}.md`;
         } else {
+            // Nota externa precisa ser movida para o novo diretório pai com o novo nome
             const newParentPath = folder.path.split('/').slice(0, -1).join('/');
             newNotePath = newParentPath ? `${newParentPath}/${newName}.md` : `${newName}.md`;
+            if (oldNote.path === newNotePath) return;
         }
 
         const existingNew = app.vault.getAbstractFileByPath(newNotePath);

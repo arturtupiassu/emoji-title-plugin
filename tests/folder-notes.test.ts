@@ -65,6 +65,14 @@ describe('folder-notes', () => {
             expect(isFolderNote(app.vault, file)).toBe(true);
         });
 
+        it('should return true for root-level outside folder note if sibling folder exists', () => {
+            const file = createMockFile('Projetos.md');
+            const folder = createMockFolder('Projetos');
+            (app.vault as any).files['Projetos'] = folder;
+            
+            expect(isFolderNote(app.vault, file)).toBe(true);
+        });
+
         it('should return false for regular file', () => {
             const file = createMockFile('A/B/C.md');
             expect(isFolderNote(app.vault, file)).toBe(false);
@@ -120,6 +128,17 @@ describe('folder-notes', () => {
             await syncFolderNoteOnRename(app, folder, 'A/OldName', settings);
 
             expect(app.vault.create).toHaveBeenCalledWith('A/NewName/NewName.md', expect.any(String));
+        });
+
+        it('should move outside folder note when folder is moved to another parent without being renamed', async () => {
+            settings.autoCreateFolderNote = true;
+            const folder = createMockFolder('X/B');
+            const oldNote = createMockFile('A/B.md');
+            (app.vault as any).files['A/B.md'] = oldNote;
+
+            await syncFolderNoteOnRename(app, folder, 'A/B', settings);
+
+            expect(app.fileManager.renameFile).toHaveBeenCalledWith(oldNote, 'X/B.md');
         });
     });
 });

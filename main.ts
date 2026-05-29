@@ -36,6 +36,7 @@ export default class EmojiTitlePlugin extends Plugin {
 
         if (this.styleEl) this.styleEl.remove();
         document.querySelectorAll('.emoji-title-plugin-span').forEach(el => el.remove());
+        document.querySelectorAll('.emoji-title-folder-note').forEach(el => el.classList.remove('emoji-title-folder-note'));
     }
 
     async loadSettings() {
