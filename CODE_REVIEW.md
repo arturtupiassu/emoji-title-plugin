@@ -112,7 +112,7 @@ We identified 6 material findings concerning functional correctness, performance
 - **Evidence**:
   The configuration file has a hardcoded local absolute path for copy actions:
   ```javascript
-  const vaultPluginPath = "/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin";
+  const vaultPluginPath = "/Users/username/obsidian/vault/.obsidian/plugins/emoji-title-plugin";
   ```
   During `npm run build` or `npm run dev`, esbuild copies built artifacts directly into this live Obsidian vault path if it exists on the host machine.
 - **Impact**: A normal project build triggers side effects outside the repository boundaries, running the risk of silently overwriting a user's active/local plugin installation. It also reduces portability of the build pipeline across different environment configurations.
