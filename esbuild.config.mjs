@@ -3,7 +3,35 @@ import process from "process";
 import { builtinModules } from "module";
 import fs from "fs";
 
-const vaultPluginPath = "/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin";
+let vaultPluginPath = process.env.OBSIDIAN_VAULT_PATH || null;
+if (!vaultPluginPath && fs.existsSync("local.config.json")) {
+	try {
+		const localConfig = JSON.parse(fs.readFileSync("local.config.json", "utf8"));
+		vaultPluginPath = localConfig.vaultPluginPath || null;
+	} catch (e) {
+		console.warn("Emoji Title: Failed to read/parse local.config.json", e);
+	}
+}
+
+const buildPlugins = [];
+if (vaultPluginPath) {
+	buildPlugins.push({
+		name: 'copy-to-vault',
+		setup(build) {
+			build.onEnd(() => {
+				try { fs.unlinkSync(`${vaultPluginPath}/main.js`); } catch (e) {}
+				try { fs.unlinkSync(`${vaultPluginPath}/manifest.json`); } catch (e) {}
+				try { fs.unlinkSync(`${vaultPluginPath}/styles.css`); } catch (e) {}
+				try { fs.copyFileSync('main.js', `${vaultPluginPath}/main.js`); } catch (e) {}
+				try { fs.copyFileSync('manifest.json', `${vaultPluginPath}/manifest.json`); } catch (e) {}
+				try { fs.copyFileSync('styles.css', `${vaultPluginPath}/styles.css`); } catch (e) {}
+				console.log(`Emoji Title: Copied build to ${vaultPluginPath}`);
+			});
+		}
+	});
+} else {
+	console.log("Emoji Title: No vault path configured. Skipping copy-to-vault step.");
+}
 
 const banner =
 `/*
@@ -41,19 +69,7 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
 	outfile: 'main.js',
-	plugins: [{
-		name: 'copy-to-vault',
-		setup(build) {
-			build.onEnd(() => {
-				try { fs.unlinkSync(`${vaultPluginPath}/main.js`); } catch (e) {}
-				try { fs.unlinkSync(`${vaultPluginPath}/manifest.json`); } catch (e) {}
-				try { fs.unlinkSync(`${vaultPluginPath}/styles.css`); } catch (e) {}
-				try { fs.copyFileSync('main.js', `${vaultPluginPath}/main.js`); } catch (e) {}
-				try { fs.copyFileSync('manifest.json', `${vaultPluginPath}/manifest.json`); } catch (e) {}
-				try { fs.copyFileSync('styles.css', `${vaultPluginPath}/styles.css`); } catch (e) {}
-			});
-		}
-	}]
+	plugins: buildPlugins
 });
 
 if (prod) {
