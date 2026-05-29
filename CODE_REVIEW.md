@@ -5,62 +5,12 @@ This document contains a detailed analysis of the Emoji Title Plugin codebase, f
 ## Summary of Findings
 
 We identified 6 material findings concerning functional correctness, performance, maintainability, and testing:
-- **1 High Severity** performance issue (redundant DOM mutations causing reflows during explorer refreshes).
-- **2 Medium Severity** bugs (root-level outside folder notes ignored; outside folder notes orphaned when folders are moved).
-- **3 Low Severity** issues (un-cleaned styling classes on unload; hardcoded local development path in esbuild configuration; missing test coverage on core updater routines).
+- **3 Medium Severity** issues (root-level outside folder notes ignored; outside folder notes orphaned when folders are moved; hardcoded local development path in esbuild causing deployment side-effects).
+- **3 Low Severity** issues (redundant DOM mutations; un-cleaned styling classes on unload; missing test coverage on core updater routines and folder-note edge cases).
 
 ---
 
 ## Detailed Findings
-
-### Redundant DOM mutations causing explorer reflows
-- **Severity**: HIGH
-- **File**: src/ui-updater.ts
-- **Line**: 25-46
-- **Evidence**:
-  In `applyEmojiToNav`, the DOM elements representing file or folder titles are mutated on every call to `updateAllFileExplorers` (which runs on all metadata changes, opens, layouts, etc.):
-  ```typescript
-  navEl.querySelectorAll('.emoji-title-plugin-span').forEach(span => span.remove());
-  ...
-  titleContent.prepend(emojiSpan);
-  ```
-  It removes and recreates the spans regardless of whether the emoji value has actually changed.
-- **Impact**: Unnecessary layout recalculations (reflows) on every metadata update, leading to high CPU usage and noticeable UI lag/freezes in vaults containing a large number of files.
-- **Suggestion**: Check if the existing span's `data-emoji` value already matches the target emoji, and only perform mutations (updates, insertions, or removals) if there is an actual difference:
-  ```typescript
-  export function applyEmojiToNav(
-      navEl: Element,
-      emoji: unknown,
-      contentSelector: string
-  ): void {
-      if (navEl.classList.contains('is-being-renamed')) return;
-
-      const existingSpan = navEl.querySelector('.emoji-title-plugin-span');
-      const safeEmoji = normalizeDisplayEmoji(emoji);
-
-      if (safeEmoji) {
-          if (existingSpan) {
-              if (existingSpan.getAttribute('data-emoji') !== safeEmoji) {
-                  existingSpan.setAttribute('data-emoji', safeEmoji);
-              }
-          } else {
-              const titleContent = contentSelector ? navEl.querySelector(contentSelector) : navEl;
-              if (titleContent) {
-                  const emojiSpan = document.createElement('span');
-                  emojiSpan.className = 'emoji-title-plugin-span';
-                  emojiSpan.setAttribute('data-emoji', safeEmoji);
-                  titleContent.prepend(emojiSpan);
-              }
-          }
-      } else {
-          if (existingSpan) {
-              existingSpan.remove();
-          }
-      }
-  }
-  ```
-
----
 
 ### Root-level outside folder notes ignored
 - **Severity**: MEDIUM
@@ -155,6 +105,73 @@ We identified 6 material findings concerning functional correctness, performance
 
 ---
 
+### Hardcoded local path in esbuild causing deployment side-effects
+- **Severity**: MEDIUM
+- **File**: esbuild.config.mjs
+- **Line**: 6
+- **Evidence**:
+  The configuration file has a hardcoded local absolute path for copy actions:
+  ```javascript
+  const vaultPluginPath = "/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin";
+  ```
+  During `npm run build` or `npm run dev`, esbuild copies built artifacts directly into this live Obsidian vault path if it exists on the host machine.
+- **Impact**: A normal project build triggers side effects outside the repository boundaries, running the risk of silently overwriting a user's active/local plugin installation. It also reduces portability of the build pipeline across different environment configurations.
+- **Suggestion**: Separate build output from deployment. Move the vault copy step to an explicit `npm run deploy` command gated by a git-ignored configuration file (e.g. `local.config.json`) or environment variables.
+
+---
+
+### Redundant DOM mutations causing explorer reflows
+- **Severity**: LOW
+- **File**: src/ui-updater.ts
+- **Line**: 25-46
+- **Evidence**:
+  In `applyEmojiToNav`, the DOM elements representing file or folder titles are mutated on every call to `updateAllFileExplorers` (which runs on all metadata changes, opens, layouts, etc.):
+  ```typescript
+  navEl.querySelectorAll('.emoji-title-plugin-span').forEach(span => span.remove());
+  ...
+  titleContent.prepend(emojiSpan);
+  ```
+  It removes and recreates the spans regardless of whether the emoji value has actually changed. Although this runs inside a debounced requestAnimationFrame refresh path, it is still redundant.
+- **Impact**: Triage prioritizes this as LOW since mutations are debounced, but in extremely large vaults it could still contribute to unnecessary layout recalculations (reflows).
+- **Suggestion**: Check if the existing span's `data-emoji` value already matches the target emoji. Scope the lookup to `titleContent`, update/reuse the first span, and remove any additional stale duplicate spans to preserve the test invariants:
+  ```typescript
+  export function applyEmojiToNav(
+      navEl: Element,
+      emoji: unknown,
+      contentSelector: string
+  ): void {
+      if (navEl.classList.contains('is-being-renamed')) return;
+
+      const titleContent = contentSelector ? navEl.querySelector(contentSelector) : navEl;
+      if (!titleContent) return;
+
+      const existingSpans = titleContent.querySelectorAll('.emoji-title-plugin-span');
+      const safeEmoji = normalizeDisplayEmoji(emoji);
+
+      if (safeEmoji) {
+          if (existingSpans.length > 0) {
+              const firstSpan = existingSpans[0];
+              if (firstSpan.getAttribute('data-emoji') !== safeEmoji) {
+                  firstSpan.setAttribute('data-emoji', safeEmoji);
+              }
+              // Remove any additional stale/duplicate spans to maintain DOM correctness
+              for (let i = 1; i < existingSpans.length; i++) {
+                  existingSpans[i].remove();
+              }
+          } else {
+              const emojiSpan = document.createElement('span');
+              emojiSpan.className = 'emoji-title-plugin-span';
+              emojiSpan.setAttribute('data-emoji', safeEmoji);
+              titleContent.prepend(emojiSpan);
+          }
+      } else {
+          existingSpans.forEach(span => span.remove());
+      }
+  }
+  ```
+
+---
+
 ### Un-cleaned styling classes on unload
 - **Severity**: LOW
 - **File**: main.ts
@@ -169,25 +186,13 @@ We identified 6 material findings concerning functional correctness, performance
 
 ---
 
-### Hardcoded local development path in esbuild configuration
+### Missing test coverage on core updater routines and folder-note edge cases
 - **Severity**: LOW
-- **File**: esbuild.config.mjs
-- **Line**: 6
-- **Evidence**:
-  The configuration file has a hardcoded local absolute path for copy actions:
-  ```javascript
-  const vaultPluginPath = "/Users/arturtupiassu/obsidian/Cofre de Artur Tupiassu/.obsidian/plugins/emoji-title-plugin";
-  ```
-- **Impact**: Decreased maintainability and portability. Builds on other systems will catch unlink and copy errors silently, but it relies on hardcoded environment parameters.
-- **Suggestion**: Load target vault paths from a git-ignored configuration file (e.g. `local.config.json`) or environment variable.
-
----
-
-### Missing test coverage on core updater routines
-- **Severity**: LOW
-- **File**: tests/ui-updater.test.ts
+- **File**: tests/ui-updater.test.ts & tests/folder-notes.test.ts
 - **Line**: N/A
 - **Evidence**:
-  `tests/ui-updater.test.ts` only contains assertions for the helper `applyEmojiToNav`. There is no test coverage for the core DOM-scanning routines `updateAllFileExplorers` and `updateAllTabTitles`.
-- **Impact**: Updates to the explorer iteration and view leaf mapping logic are fragile and run the risk of introducing regressions unnoticed.
-- **Suggestion**: Mock DOM structure and Obsidian workspace leaves in `ui-updater.test.ts` to fully assert update behaviors.
+  `tests/ui-updater.test.ts` only contains assertions for the helper `applyEmojiToNav`. There is no test coverage for the core DOM-scanning routines `updateAllFileExplorers` and `updateAllTabTitles`. Furthermore, `tests/folder-notes.test.ts` lacks regression coverage for root-level outside folder notes or outside folder note movement when the folder is moved without being renamed.
+- **Impact**: Updates to the explorer iteration, view leaf mapping, or folder note synchronizations are fragile and run the risk of introducing regressions unnoticed.
+- **Suggestion**: 
+  1. Mock DOM structure and Obsidian workspace leaves in `tests/ui-updater.test.ts` to assert explorer/tab update behaviors.
+  2. Add explicit regression tests in `tests/folder-notes.test.ts` for root sibling folder notes and outside folder-note movement.
